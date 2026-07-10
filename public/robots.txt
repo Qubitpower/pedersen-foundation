@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pedersen.foundation/sitemap-index.xml

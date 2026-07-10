@@ -9,8 +9,8 @@ const links = [
   { href: '/code', label: 'Code' },
   { href: '/applications', label: 'Applications' },
   { href: '/glossary', label: 'Glossary' },
-  { href: '/further-reading', label: 'Further reading', soon: true },
-  { href: '/about', label: 'About', soon: true },
+  { href: '/further-reading', label: 'Further reading' },
+  { href: '/about', label: 'About' },
 ];
 ---
 
@@ -21,13 +21,9 @@ const links = [
       <ul>
         {links.map((link) => (
           <li>
-            {link.soon ? (
-              <span class="soon" title="Coming soon">{link.label}</span>
-            ) : (
-              <a href={link.href} aria-current={pathname === link.href ? 'page' : undefined}>
-                {link.label}
-              </a>
-            )}
+            <a href={link.href} aria-current={pathname === link.href ? 'page' : undefined}>
+              {link.label}
+            </a>
           </li>
         ))}
       </ul>
@@ -47,12 +43,12 @@ const links = [
     z-index: 10;
   }
   .site-header-inner {
-    max-width: 62rem;
+    max-width: 78rem;
     margin: 0 auto;
     padding: 0.9rem 1.25rem;
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1.25rem;
   }
   .brand {
     font-family: var(--font-sans);
@@ -65,15 +61,17 @@ const links = [
   nav {
     flex: 1;
     overflow-x: auto;
+    /* Hint that the nav scrolls horizontally on narrow viewports. */
+    mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
   }
   nav ul {
     list-style: none;
     display: flex;
-    gap: 1.1rem;
+    gap: 1rem;
     margin: 0;
     padding: 0;
     font-family: var(--font-sans);
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     white-space: nowrap;
   }
   nav a {
@@ -83,11 +81,6 @@ const links = [
   nav a:hover,
   nav a[aria-current='page'] {
     color: var(--text);
-  }
-  nav .soon {
-    color: var(--text-muted);
-    opacity: 0.45;
-    cursor: default;
   }
   #theme-toggle {
     background: none;
