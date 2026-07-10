@@ -1,0 +1,26 @@
+---
+layout: ../layouts/Layout.astro
+title: Pedersen Foundation
+description: A plain-spoken, working explanation of Pedersen commitments — the building block behind confidential transactions, range proofs, and a lot of zero-knowledge cryptography.
+---
+
+import CommitRevealDemo from '../components/CommitRevealDemo.astro';
+
+# Pedersen commitments, explained by actually computing one
+
+A **commitment scheme** lets you lock in a value now and reveal it later, without
+being able to change your mind and without the other side learning anything early —
+like sealing a number in an envelope. A **Pedersen commitment** is a specific,
+widely used way to build that envelope out of a bit of group theory: it hides the
+value unconditionally, its binding property reduces to the hardness of the discrete
+logarithm problem, and — unlike a plain hash — it lets you add committed values
+together without ever opening them. Try it below, then read [what a commitment
+scheme actually needs to guarantee](/what-is-a-commitment-scheme) or jump straight
+to [the construction](/pedersen-commitments).
+
+<CommitRevealDemo />
+
+This demo runs the real arithmetic in your browser: `commit(m, r) = gᵐ · hʳ mod p`
+over a 2048-bit safe-prime group, with `g` and `h` derived by hashing (so nobody —
+including this site — knows the discrete log relating them). Nothing is sent to a
+server; open the page source if you don't believe it.

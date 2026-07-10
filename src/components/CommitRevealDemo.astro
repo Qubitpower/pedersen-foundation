@@ -1,0 +1,159 @@
+<div class="demo-panel" id="commit-reveal-demo">
+  <p class="demo-status" id="demo-status">Deriving generators g, h…</p>
+
+  <div class="demo-row">
+    <label for="demo-m">Your secret message, m</label>
+    <div class="demo-input-row">
+      <input id="demo-m" type="number" value="42" min="0" step="1" />
+      <button id="demo-commit-btn" type="button" disabled>Commit</button>
+    </div>
+  </div>
+
+  <div class="demo-output" id="demo-output" hidden>
+    <p class="demo-label">Commitment C = g^m · h^r mod p</p>
+    <code class="demo-commitment" id="demo-commitment-value"></code>
+    <p class="demo-hint">m and r are not shown — this is all the verifier sees.</p>
+    <button id="demo-reveal-btn" type="button">Reveal</button>
+  </div>
+
+  <div class="demo-reveal" id="demo-reveal" hidden>
+    <p>Opened with <code>m = <span id="reveal-m"></span></code>, <code>r = <span id="reveal-r"></span></code></p>
+    <p class="demo-check" id="reveal-check"></p>
+  </div>
+</div>
+
+<script>
+  import { getGenerators, commit, randomExponent, verify, toShortHex } from '../lib/classic-pedersen.js';
+
+  const statusEl = document.getElementById('demo-status')!;
+  const mInput = document.getElementById('demo-m') as HTMLInputElement;
+  const commitBtn = document.getElementById('demo-commit-btn') as HTMLButtonElement;
+  const outputEl = document.getElementById('demo-output')!;
+  const commitmentValueEl = document.getElementById('demo-commitment-value')!;
+  const revealBtn = document.getElementById('demo-reveal-btn')!;
+  const revealEl = document.getElementById('demo-reveal')!;
+  const revealMEl = document.getElementById('reveal-m')!;
+  const revealREl = document.getElementById('reveal-r')!;
+  const revealCheckEl = document.getElementById('reveal-check')!;
+
+  let state: { m: bigint; r: bigint; C: bigint } | null = null;
+
+  getGenerators().then(() => {
+    statusEl.textContent = 'Ready — classic scheme over a 2048-bit safe-prime subgroup (RFC 3526 Group 14).';
+    commitBtn.disabled = false;
+  });
+
+  commitBtn.addEventListener('click', async () => {
+    commitBtn.disabled = true;
+    const m = BigInt(Math.max(0, Math.trunc(Number(mInput.value) || 0)));
+    const r = randomExponent();
+    const C = await commit(m, r);
+    state = { m, r, C };
+    commitmentValueEl.textContent = toShortHex(C);
+    outputEl.hidden = false;
+    revealEl.hidden = true;
+    commitBtn.disabled = false;
+  });
+
+  revealBtn.addEventListener('click', async () => {
+    if (!state) return;
+    const ok = await verify(state.m, state.r, state.C);
+    revealMEl.textContent = state.m.toString();
+    revealREl.textContent = toShortHex(state.r, 20);
+    revealCheckEl.textContent = ok
+      ? '✓ recomputed g^m · h^r mod p — matches C'
+      : '✗ mismatch (this should never happen)';
+    revealCheckEl.className = `demo-check ${ok ? 'ok' : 'bad'}`;
+    revealEl.hidden = false;
+  });
+</script>
+
+<style>
+  .demo-panel {
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    border-radius: 0.6em;
+    padding: 1.5rem 1.5rem 1.75rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .demo-status {
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0 1.1rem;
+  }
+  .demo-row label {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+  .demo-input-row {
+    display: flex;
+    gap: 0.6rem;
+  }
+  .demo-input-row input {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    padding: 0.45em 0.6em;
+    border: 1px solid var(--border);
+    border-radius: 0.4em;
+    background: var(--bg);
+    color: var(--text);
+    width: 8rem;
+  }
+  button {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.45em 1.1em;
+    border: 1px solid var(--accent);
+    border-radius: 0.4em;
+    background: var(--accent);
+    color: var(--bg-elevated);
+    cursor: pointer;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  button:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  .demo-output {
+    margin-top: 1.4rem;
+    padding-top: 1.2rem;
+    border-top: 1px dashed var(--border);
+  }
+  .demo-label {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0 0 0.5rem;
+  }
+  .demo-commitment {
+    display: block;
+    word-break: break-all;
+    background: var(--code-bg);
+    padding: 0.7em 0.85em;
+    border-radius: 0.4em;
+    margin-bottom: 0.5rem;
+  }
+  .demo-hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+  .demo-reveal {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--border);
+  }
+  .demo-check {
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .demo-check.ok { color: var(--ok); }
+  .demo-check.bad { color: var(--bad); }
+</style>

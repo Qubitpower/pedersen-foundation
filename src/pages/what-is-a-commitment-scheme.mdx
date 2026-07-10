@@ -1,0 +1,103 @@
+---
+layout: ../layouts/Layout.astro
+title: What is a commitment scheme
+description: Hiding and binding, the sealed-envelope analogy, and the simplest possible commitment scheme — a hash commitment — as a baseline before Pedersen's construction.
+---
+
+# What is a commitment scheme
+
+Picture a sealed envelope. You write a value on a piece of paper, seal it in an
+envelope, and hand it to someone. Two things are true about that envelope:
+
+- **They can't tell what's inside.** The envelope hides the value until you open it.
+- **You can't swap the paper.** Once it's sealed and handed over, you can't secretly
+  replace the value with a different one before you "reveal" it.
+
+A **commitment scheme** is the cryptographic version of that envelope. It's built
+from two algorithms:
+
+- **Commit(m, r) → C** — take a message `m` and some randomness `r`, and produce a
+  commitment `C`. You send `C` now.
+- **Open(C, m, r)** — later, you reveal `m` and `r`. Anyone can recompute `Commit(m, r)`
+  and check it equals `C`.
+
+The randomness `r` matters: without it, the same `m` would always produce the same
+`C`, and someone could brute-force guess `m` from `C` alone whenever `m` is drawn
+from a small set (a yes/no vote, a low card value, and so on).
+
+## The two properties, precisely
+
+The envelope analogy maps onto two properties a commitment scheme has to satisfy —
+and cryptographers care about *how strongly* each one holds:
+
+### Hiding
+
+Given `C`, nobody can learn anything about `m` before you open it.
+
+Hiding comes in two strengths. **Computationally hiding** means an attacker with
+unlimited time (but limited computing power) still can't extract `m` — the security
+rests on some problem being hard to solve. **Information-theoretically (or
+statistically) hiding** is stronger: `C` reveals literally zero information about
+`m`, even to an attacker with infinite computing power, because for *every* possible
+message there's some randomness `r` that would have produced the exact same `C`.
+[Pedersen commitments](/pedersen-commitments) achieve this stronger form.
+
+### Binding
+
+Once `C` is sent, you can't find a different `(m', r')` with `m' ≠ m` that also
+opens `C` — you're bound to the value you committed to.
+
+Binding also splits into two strengths, and there's a general rule: **a commitment
+scheme can be information-theoretically hiding or information-theoretically
+binding, but not both at once.** If every commitment could open to every message
+(true hiding), then some commitment necessarily *can* open to two different
+messages — that's a binding failure waiting to be found, it's just computationally
+hard to find it. Pedersen commitments take the "hiding wins" side of that trade-off:
+hiding is unconditional, and binding is merely computational, resting on the
+hardness of the discrete logarithm problem (see [Pedersen
+commitments](/pedersen-commitments) for exactly how).
+
+## The simplest commitment: a hash
+
+Before looking at Pedersen's construction, it's worth seeing the most obvious way
+to build a commitment scheme, because it's the baseline everything else gets
+compared against:
+
+```
+Commit(m, r) = H(m ‖ r)
+```
+
+Concatenate the message and a random nonce, hash them with a cryptographic hash
+function like SHA-256, and call that the commitment. To open, reveal `m` and `r`;
+the verifier recomputes the hash and checks it matches.
+
+This works, and it's what a lot of real systems actually use. But look at what kind
+of security it has:
+
+- **Hiding** is only *computational* — it relies on the hash function being
+  preimage-resistant. There's no mathematical guarantee that every message is
+  equally consistent with a given hash; it just happens to be infeasible to find
+  which one it was, given how hash functions behave.
+- **Binding** is also only *computational* — it relies on the hash function being
+  collision-resistant. In principle a hash has a fixed output size but infinitely
+  many possible `(m, r)` inputs, so collisions exist; you're trusting that nobody
+  can find one.
+- It has **no useful algebraic structure**. You can't combine two hash commitments
+  to say anything meaningful about the sum of the values inside them.
+
+That last point is where Pedersen's construction earns its keep. By building the
+commitment out of group operations instead of a hash, it gets *information-
+theoretic* hiding (a strictly stronger guarantee than the hash version) and, as a
+bonus, a **homomorphic property**: you can add two commitments together and get a
+valid commitment to the sum, without ever opening either one. That's the property
+range proofs and confidential transactions are built on.
+
+Continue to [Pedersen commitments](/pedersen-commitments) for the actual
+construction.
+
+---
+
+**Sources:** the hiding/binding framing here follows the standard treatment in
+introductory cryptography courses and the original commitment-scheme literature.
+A Further Reading page with specific citations is coming in a later phase of this
+site.
