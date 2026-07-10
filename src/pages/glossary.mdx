@@ -1,0 +1,100 @@
+---
+layout: ../layouts/Layout.astro
+title: Glossary
+description: Plain-language definitions for the terms used across this site — hiding, binding, discrete log assumption, homomorphic commitment, zero-knowledge, soundness, completeness, witness, prover and verifier.
+---
+
+# Glossary
+
+Short, plain-language definitions for terms used elsewhere on this site. Each
+links back to the page where it's explained in more depth.
+
+### Binding
+
+The property that once you've committed to a value, you can't later "open" the
+commitment to a different value. See [what a commitment scheme
+is](/what-is-a-commitment-scheme#binding) for the two strengths this comes in, and
+[Pedersen commitments](/pedersen-commitments#why-binding-is-only-computational) for
+why Pedersen's binding is computational, reducing to the discrete logarithm
+problem.
+
+### Commitment scheme
+
+A pair of algorithms, `Commit` and `Open`, that let you lock in a value now and
+reveal it later without being able to change it — the cryptographic version of a
+sealed envelope. See [what a commitment scheme
+is](/what-is-a-commitment-scheme).
+
+### Completeness
+
+The property of a proof system that says: if the statement is actually true and
+both parties follow the protocol honestly, the verifier accepts. (The counterpart
+to [soundness](#soundness) — completeness is about honest provers succeeding,
+soundness is about dishonest provers failing.)
+
+### Discrete logarithm problem
+
+Given a group element $g$ and another element $h = g^x$, the discrete logarithm
+problem is finding $x$. In groups where this is believed to be computationally
+hard (certain subgroups mod a large prime, or elliptic curve groups), it underlies
+the security of Diffie–Hellman key exchange, Schnorr signatures, and — as used on
+this site — the [binding property of Pedersen
+commitments](/pedersen-commitments#why-binding-is-only-computational).
+
+### Hiding
+
+The property that a commitment `C` reveals nothing about the committed value `m`
+before it's opened. See [what a commitment scheme
+is](/what-is-a-commitment-scheme#hiding) for the computational-vs-information-
+theoretic distinction, and [why Pedersen's hiding is
+information-theoretic](/pedersen-commitments#why-hiding-is-information-theoretic).
+
+### Homomorphic commitment
+
+A commitment scheme where combining two commitments (e.g. multiplying them)
+produces a valid commitment to the combination of the underlying values (e.g.
+their sum) — without opening either one. Pedersen commitments have this property;
+see [the homomorphic property](/pedersen-commitments#the-homomorphic-property) and
+its use in [confidential transactions](/applications).
+
+### Nothing-up-my-sleeve
+
+A value (like the generator $h$ in a Pedersen commitment) produced by a public,
+deterministic, auditable procedure — typically hashing a fixed string — instead of
+being chosen freely by anyone. This rules out the value having been picked to
+secretly satisfy some relation (like a known discrete log) that would break the
+scheme's security. The demos on this site derive their generators this way; see
+[Pedersen commitments](/pedersen-commitments#the-construction).
+
+### Prover / verifier
+
+The two roles in an interactive proof: the **prover** wants to convince the
+**verifier** that some statement is true (often, that they know a [witness](#witness))
+— ideally without revealing anything beyond that fact.
+
+### Soundness
+
+The property of a proof system that says: if the statement is actually false, no
+cheating prover can convince the verifier it's true (except with some small
+probability). The counterpart to [completeness](#completeness).
+
+### Witness
+
+The secret information a prover holds that makes a statement true — for example,
+the opening `(m, r)` of a commitment `C`, or the private key corresponding to a
+public key. A zero-knowledge proof lets the prover convince a verifier they
+possess a witness without revealing the witness itself.
+
+### Zero-knowledge proof
+
+An interactive (or, via the [Fiat–Shamir transform](/history#1986--the-fiatshamir-transform),
+non-interactive) protocol in which a prover convinces a verifier that a statement
+is true while revealing nothing else — not even the [witness](#witness) itself.
+Introduced by Goldwasser, Micali, and Rackoff in 1985; see [History](/history) for
+the full timeline from there to Pedersen commitments and beyond.
+
+---
+
+**Sources:** these are standard definitions used consistently across the
+cryptography literature; see [History](/history) for citations to the original
+papers that introduced several of these concepts.

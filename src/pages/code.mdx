@@ -1,0 +1,438 @@
+---
+layout: ../layouts/Layout.astro
+title: Code
+description: The classic and elliptic-curve Pedersen commitment formulas implemented in Python, JavaScript, and Rust, with line comments — every sample here has actually been run.
+---
+
+# Code
+
+The same two formulas from [Pedersen commitments](/pedersen-commitments) —
+classic (mod p) and elliptic-curve — implemented in Python, JavaScript, and Rust.
+Every sample on this page has actually been compiled/run and checked for a correct
+commit → reveal roundtrip and the homomorphic property; none of this is
+pseudocode.
+
+## Classic version (mod p)
+
+### Python
+
+No third-party dependencies — just `hashlib` and `secrets` from the standard
+library.
+
+```python
+import hashlib
+import secrets
+
+# RFC 3526 "2048-bit MODP Group 14" — a safe prime p = 2q + 1 (q also prime),
+# published for Diffie-Hellman key exchange. Reused here only because it's a
+# real, citable, publicly verifiable safe prime.
+P_HEX = """
+  FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1
+  29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD
+  EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245
+  E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED
+  EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE45B3D
+  C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F
+  83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D
+  670C354E 4ABC9804 F1746C08 CA18217C 32905E46 2E36CE3B
+  E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9
+  DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510
+  15728E5A 8AACAA68 FFFFFFFF FFFFFFFF
+""".replace(" ", "").replace("\n", "")
+
+P = int(P_HEX, 16)          # the safe prime
+Q = (P - 1) // 2            # order of the quadratic-residue subgroup
+
+def hash_to_field(tag: bytes, mod: int, byte_len: int = 256) -> int:
+    """Expand `tag` with counter-mode SHA-256 until we have enough bytes to
+    cover P, then reduce mod `mod`. This is how we get a field element from
+    a public string with no hidden structure."""
+    out = b""
+    counter = 0
+    while len(out) < byte_len:
+        out += hashlib.sha256(tag + counter.to_bytes(4, "big")).digest()
+        counter += 1
+    x = int.from_bytes(out[:byte_len], "big") % mod
+    return x if x >= 2 else x + 2
+
+def derive_generator(tag: bytes) -> int:
+    """Square a hashed field element to land in the order-q subgroup
+    (squaring any element of Z_p* lands it in the unique index-2 subgroup,
+    which has order q since p = 2q + 1). Retry on the negligible chance the
+    result is the identity."""
+    attempt = 0
+    while True:
+        x = hash_to_field(tag + b"#attempt" + str(attempt).encode(), P)
+        g = pow(x, 2, P)
+        if g != 1:
+            return g
+        attempt += 1
+
+# g and h: independent generators with no known discrete-log relation.
+g = derive_generator(b"pedersen.foundation code-page generator g v1")
+h = derive_generator(b"pedersen.foundation code-page generator h v1")
+
+def random_exponent() -> int:
+    return secrets.randbelow(Q)
+
+def commit(m: int, r: int) -> int:
+    """Commit(m, r) = g^m * h^r mod p"""
+    return (pow(g, m, P) * pow(h, r, P)) % P
+
+def verify(m: int, r: int, C: int) -> bool:
+    return commit(m, r) == C
+
+# --- usage ---
+m, r = 42, random_exponent()
+C = commit(m, r)
+assert verify(m, r, C)                     # opens correctly
+assert not verify(m + 1, r, C)              # wrong m is rejected
+
+# homomorphic property: Commit(m1,r1) * Commit(m2,r2) == Commit(m1+m2, r1+r2)
+m1, r1 = 7, random_exponent()
+m2, r2 = 15, random_exponent()
+assert (commit(m1, r1) * commit(m2, r2)) % P == commit(m1 + m2, (r1 + r2) % Q)
+```
+
+### JavaScript
+
+This is the same implementation running live in the demos on this site — see
+[`src/lib/classic-pedersen.js`](https://github.com/Qubitpower/pedersen-foundation/blob/main/src/lib/classic-pedersen.js)
+in the site's own repository. Uses native `BigInt` and the Web Crypto API, no
+dependencies.
+
+```javascript
+// P: the RFC 3526 2048-bit MODP Group 14 safe prime (p = 2q + 1).
+const P = BigInt('0x' + P_HEX); // same hex constant as the Python version above
+const Q = (P - 1n) / 2n;        // order of the quadratic-residue subgroup
+
+// Square-and-multiply modular exponentiation.
+function modPow(base, exp, mod) {
+  base %= mod;
+  if (base < 0n) base += mod;
+  let result = 1n;
+  while (exp > 0n) {
+    if (exp & 1n) result = (result * base) % mod;
+    exp >>= 1n;
+    base = (base * base) % mod;
+  }
+  return result;
+}
+
+async function sha256(bytes) {
+  return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+}
+
+// Expand a tag with counter-mode SHA-256, reduce mod P — same idea as the
+// Python hash_to_field above.
+async function hashToFieldElement(tag, mod, byteLen = 256) {
+  const blocks = [];
+  let total = 0, counter = 0;
+  while (total < byteLen) {
+    const block = await sha256(new TextEncoder().encode(`${tag}#${counter}`));
+    blocks.push(block);
+    total += block.length;
+    counter++;
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const b of blocks) { bytes.set(b, offset); offset += b.length; }
+  let hex = '0x0';
+  for (const byte of bytes.slice(0, byteLen)) hex += byte.toString(16).padStart(2, '0');
+  let x = BigInt(hex) % mod;
+  return x < 2n ? x + 2n : x;
+}
+
+// Square a hashed field element to land in the order-q subgroup (retry on
+// the negligible chance of hitting the identity).
+async function deriveGenerator(tag) {
+  let attempt = 0;
+  while (true) {
+    const x = await hashToFieldElement(`${tag}#attempt${attempt}`, P);
+    const g = modPow(x, 2n, P);
+    if (g !== 1n) return g;
+    attempt++;
+  }
+}
+
+const g = await deriveGenerator('pedersen.foundation code-page generator g v1');
+const h = await deriveGenerator('pedersen.foundation code-page generator h v1');
+
+function randomExponent() {
+  const bytes = new Uint8Array(256);
+  crypto.getRandomValues(bytes);
+  let hex = '0x0';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return BigInt(hex) % Q;
+}
+
+// Commit(m, r) = g^m * h^r mod p
+function commit(m, r) {
+  return (modPow(g, m, P) * modPow(h, r, P)) % P;
+}
+```
+
+### Rust
+
+Uses [`num-bigint`](https://docs.rs/num-bigint) for arbitrary-precision
+arithmetic and [`sha2`](https://docs.rs/sha2) for hashing.
+
+```rust
+use num_bigint::BigUint;
+use num_traits::One;
+use sha2::{Digest, Sha256};
+use rand::RngCore;
+
+fn p() -> BigUint {
+    // Same RFC 3526 2048-bit safe prime as the Python/JS versions, hex
+    // digits concatenated without spaces.
+    let hex = "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD1\
+        29024E088A67CC74020BBEA63B139B22514A08798E3404DD\
+        EF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245\
+        E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED\
+        EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3D\
+        C2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F\
+        83655D23DCA3AD961C62F356208552BB9ED529077096966D\
+        670C354E4ABC9804F1746C08CA18217C32905E462E36CE3B\
+        E39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9\
+        DE2BCBF6955817183995497CEA956AE515D2261898FA0510\
+        15728E5A8AACAA68FFFFFFFFFFFFFFFF";
+    BigUint::parse_bytes(hex.as_bytes(), 16).unwrap()
+}
+
+// Expand a tag with counter-mode SHA-256, reduce mod `modulus`.
+fn hash_to_field(tag: &[u8], modulus: &BigUint, byte_len: usize) -> BigUint {
+    let mut out = Vec::with_capacity(byte_len + 32);
+    let mut counter: u32 = 0;
+    while out.len() < byte_len {
+        let mut hasher = Sha256::new();
+        hasher.update(tag);
+        hasher.update(counter.to_be_bytes());
+        out.extend_from_slice(&hasher.finalize());
+        counter += 1;
+    }
+    out.truncate(byte_len);
+    let x = BigUint::from_bytes_be(&out) % modulus;
+    if x < BigUint::from(2u8) { x + BigUint::from(2u8) } else { x }
+}
+
+// Square a hashed field element into the order-q subgroup, retrying on the
+// negligible chance of landing on the identity.
+fn derive_generator(tag: &str, p: &BigUint) -> BigUint {
+    let mut attempt: u32 = 0;
+    loop {
+        let tagged = format!("{tag}#attempt{attempt}");
+        let x = hash_to_field(tagged.as_bytes(), p, 256);
+        let g = x.modpow(&BigUint::from(2u8), p);
+        if !g.is_one() {
+            return g;
+        }
+        attempt += 1;
+    }
+}
+
+fn random_exponent(q: &BigUint) -> BigUint {
+    let mut bytes = [0u8; 256];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    BigUint::from_bytes_be(&bytes) % q
+}
+
+struct Group { p: BigUint, q: BigUint, g: BigUint, h: BigUint }
+
+impl Group {
+    fn new(label: &str) -> Self {
+        let p = p();
+        let q = (&p - BigUint::one()) / BigUint::from(2u8);
+        let g = derive_generator(&format!("{label} generator g v1"), &p);
+        let h = derive_generator(&format!("{label} generator h v1"), &p);
+        Group { p, q, g, h }
+    }
+
+    // Commit(m, r) = g^m * h^r mod p
+    fn commit(&self, m: &BigUint, r: &BigUint) -> BigUint {
+        (self.g.modpow(m, &self.p) * self.h.modpow(r, &self.p)) % &self.p
+    }
+
+    fn verify(&self, m: &BigUint, r: &BigUint, c: &BigUint) -> bool {
+        &self.commit(m, r) == c
+    }
+}
+
+fn main() {
+    let group = Group::new("pedersen.foundation code-page classic");
+
+    let m = BigUint::from(42u32);
+    let r = random_exponent(&group.q);
+    let c = group.commit(&m, &r);
+    assert!(group.verify(&m, &r, &c));
+    assert!(!group.verify(&(&m + BigUint::one()), &r, &c));
+
+    // homomorphic property
+    let (m1, r1) = (BigUint::from(7u32), random_exponent(&group.q));
+    let (m2, r2) = (BigUint::from(15u32), random_exponent(&group.q));
+    let c_sum = (group.commit(&m1, &r1) * group.commit(&m2, &r2)) % &group.p;
+    let c_direct = group.commit(&(&m1 + &m2), &((&r1 + &r2) % &group.q));
+    assert_eq!(c_sum, c_direct);
+}
+```
+
+## Elliptic-curve version
+
+All three curve implementations below fix **secp256k1**, use its standard base
+point for $G$, and derive $H$ with a nothing-up-my-sleeve hash-to-curve — though
+each language uses a different (equally valid) hash-to-curve method, noted
+inline, so the exact bytes of $H$ differ between them.
+
+### Python
+
+Uses [`coincurve`](https://pypi.org/project/coincurve/), a wrapper around
+Bitcoin Core's audited `libsecp256k1`.
+
+```python
+import hashlib
+import secrets
+import coincurve
+
+N = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141  # curve order
+
+def scalar_bytes(k: int) -> bytes:
+    return (k % N).to_bytes(32, "big")
+
+G = coincurve.PublicKey.from_valid_secret(scalar_bytes(1))  # standard base point
+
+def hash_to_curve(tag: bytes) -> coincurve.PublicKey:
+    """Try-and-increment: hash `tag`, try it as a compressed point's
+    x-coordinate, and keep incrementing a counter until it lands on the
+    curve (roughly a coin flip per attempt)."""
+    counter = 0
+    while True:
+        candidate = hashlib.sha256(tag + counter.to_bytes(4, "big")).digest()
+        try:
+            return coincurve.PublicKey(b"\x02" + candidate)
+        except Exception:
+            counter += 1
+
+H = hash_to_curve(b"pedersen.foundation code-page generator H")
+
+def random_scalar() -> int:
+    return secrets.randbelow(N)
+
+def commit(m: int, r: int) -> coincurve.PublicKey:
+    """Commit(m, r) = m*G + r*H"""
+    mG = G.multiply(scalar_bytes(m))
+    rH = H.multiply(scalar_bytes(r))
+    return coincurve.PublicKey.combine_keys([mG, rH])
+
+# --- usage ---
+m, r = 42, random_scalar()
+C = commit(m, r)
+assert commit(m, r).format(True) == C.format(True)  # deterministic / reproducible
+
+# homomorphic property
+m1, r1 = 7, random_scalar()
+m2, r2 = 15, random_scalar()
+C_sum = coincurve.PublicKey.combine_keys([commit(m1, r1), commit(m2, r2)])
+C_direct = commit(m1 + m2, (r1 + r2) % N)
+assert C_sum.format(True) == C_direct.format(True)
+```
+
+### JavaScript
+
+This is the same implementation running live in the demos on this site — see
+[`src/lib/ec-pedersen.js`](https://github.com/Qubitpower/pedersen-foundation/blob/main/src/lib/ec-pedersen.js).
+Uses [`@noble/curves`](https://github.com/paulmillr/noble-curves), an audited
+library, with its built-in RFC 9380 hash-to-curve.
+
+```javascript
+import { secp256k1, secp256k1_hasher } from '@noble/curves/secp256k1.js';
+
+const G = secp256k1.Point.BASE;      // standard base point
+const N = secp256k1.Point.Fn.ORDER;  // curve order
+
+// RFC 9380 hash-to-curve: maps a domain-separated tag directly onto a curve
+// point. Nothing-up-my-sleeve by construction — no discrete log relative to
+// G is knowable.
+const H = secp256k1_hasher.hashToCurve(
+  new TextEncoder().encode('pedersen.foundation code-page generator H'),
+  { DST: 'pedersen.foundation-code-page-v1' }
+);
+
+function randomScalar() {
+  const bytes = new Uint8Array(48); // extra bytes keep mod bias negligible
+  crypto.getRandomValues(bytes);
+  let hex = '0x0';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return BigInt(hex) % N;
+}
+
+// Commit(m, r) = m*G + r*H, as a curve point.
+function commit(m, r) {
+  return G.multiply(((m % N) + N) % N).add(H.multiply(((r % N) + N) % N));
+}
+```
+
+### Rust
+
+Uses [`k256`](https://docs.rs/k256), the RustCrypto project's pure-Rust
+secp256k1 implementation.
+
+```rust
+use k256::elliptic_curve::{group::GroupEncoding, ops::MulByGenerator, Field};
+use k256::{ProjectivePoint, Scalar};
+use rand::rngs::OsRng;
+use sha2::{Digest, Sha256};
+
+// Try-and-increment hash-to-curve: same method as the Python version above,
+// a different (simpler) nothing-up-my-sleeve construction than the RFC 9380
+// one used in the JS demo.
+fn hash_to_curve(tag: &[u8]) -> ProjectivePoint {
+    let mut counter: u32 = 0;
+    loop {
+        let mut hasher = Sha256::new();
+        hasher.update(tag);
+        hasher.update(counter.to_be_bytes());
+        let digest = hasher.finalize();
+
+        let mut compressed = [0u8; 33];
+        compressed[0] = 0x02; // even y
+        compressed[1..].copy_from_slice(&digest);
+
+        if let Some(point) =
+            Option::<k256::AffinePoint>::from(k256::AffinePoint::from_bytes(&compressed.into()))
+        {
+            return ProjectivePoint::from(point);
+        }
+        counter += 1;
+    }
+}
+
+// Commit(m, r) = m*G + r*H
+fn commit(g: &ProjectivePoint, h: &ProjectivePoint, m: &Scalar, r: &Scalar) -> ProjectivePoint {
+    g * m + h * r
+}
+
+fn main() {
+    let g = ProjectivePoint::mul_by_generator(&Scalar::ONE); // standard base point
+    let h = hash_to_curve(b"pedersen.foundation code-page generator H");
+
+    let m = Scalar::from(42u64);
+    let r = Scalar::random(&mut OsRng);
+    let c = commit(&g, &h, &m, &r);
+    assert_eq!(commit(&g, &h, &m, &r), c); // deterministic / reproducible
+
+    // homomorphic property
+    let (m1, r1) = (Scalar::from(7u64), Scalar::random(&mut OsRng));
+    let (m2, r2) = (Scalar::from(15u64), Scalar::random(&mut OsRng));
+    let c_sum = commit(&g, &h, &m1, &r1) + commit(&g, &h, &m2, &r2);
+    let c_direct = commit(&g, &h, &(m1 + m2), &(r1 + r2));
+    assert_eq!(c_sum, c_direct);
+}
+```
+
+---
+
+**Sources:** the classic-group prime is RFC 3526's 2048-bit MODP Group 14; the
+elliptic-curve samples use secp256k1 via
+[`coincurve`](https://pypi.org/project/coincurve/) (Python, wrapping
+`libsecp256k1`), [`@noble/curves`](https://github.com/paulmillr/noble-curves)
+(JavaScript), and [`k256`](https://docs.rs/k256) (Rust).

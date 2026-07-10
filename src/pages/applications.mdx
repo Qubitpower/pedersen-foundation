@@ -1,0 +1,93 @@
+---
+layout: ../layouts/Layout.astro
+title: Applications
+description: Where Pedersen commitments actually get used — confidential transactions, Bulletproofs range proofs, and homomorphic-tally voting — each with a real source.
+---
+
+# Applications
+
+The construction on [Pedersen commitments](/pedersen-commitments) isn't just a
+textbook exercise — it's load-bearing infrastructure in a few specific, real
+systems. Here's where, and why the [homomorphic
+property](/pedersen-commitments#the-homomorphic-property) in particular keeps
+showing up.
+
+## Confidential transactions
+
+A public ledger like Bitcoin's normally shows every transaction amount in the
+clear. **Confidential Transactions**, proposed by Gregory Maxwell in 2015, replace
+each plaintext amount with a Pedersen commitment to that amount instead.
+
+The reason this works at all: a validator doesn't need to see the amounts to
+check that a transaction is valid — it only needs to check that **inputs sum to
+outputs** (plus any fee). Because Pedersen commitments are homomorphic, the
+validator can add up the *commitments* and check that the input side and output
+side match, using exactly the identity from [the homomorphic
+property](/pedersen-commitments#the-homomorphic-property):
+
+$$
+\prod \text{Commit(input}_i) = \prod \text{Commit(output}_j) \cdot \text{Commit(fee)}
+$$
+
+If that equation holds, the amounts balance — with nobody, including the
+validator, ever learning what any individual amount was. (One extra piece is
+needed to make this safe: without it, someone could commit to a *negative* amount
+and mint coins out of thin air while the sums still balance. That's what [range
+proofs](#range-proofs-and-bulletproofs), below, are for.)
+
+This is implemented and documented as part of Blockstream's Elements platform —
+see
+[elementsproject.org/features/confidential-transactions](https://elementsproject.org/features/confidential-transactions).
+The same year, Monero took a related but distinct approach: Shen Noether's **Ring
+Confidential Transactions (RingCT)** combines a Pedersen commitment on the amount
+with a ring signature that also hides *which* input is being spent, not just how
+much (Shen Noether, "Ring Confidential Transactions," IACR ePrint 2015/1098).
+MimbleWimble-based chains (Grin, Beam) push this further still, using Pedersen
+commitments as the *only* representation of value on the ledger, with no
+separate plaintext amount field at all.
+
+## Range proofs and Bulletproofs
+
+A Pedersen commitment by itself proves nothing about the *value* committed to —
+that's the whole point of hiding. But "prove nothing" is a problem if a negative
+committed amount would let someone counterfeit money while the sums still balance
+homomorphically. A **range proof** solves this: it lets the committer prove that
+a committed value lies within some range (say, $[0, 2^{64})$) without revealing
+the value itself.
+
+**Bulletproofs** (Bünz, Bootle, Boneh, Poelstra, Wuille, and Maxwell, "Bulletproofs:
+Short Proofs for Confidential Transactions and More," IEEE Symposium on Security
+and Privacy 2018, pp. 315–334) are the range-proof construction that made this
+practical at scale: no trusted setup, and proof size that grows only
+logarithmically with the size of the range, with proofs for multiple values able
+to be aggregated together cheaply. They're built directly on Pedersen commitments
+— see the paper's eprint version at
+[eprint.iacr.org/2017/1066](https://eprint.iacr.org/2017/1066). Confidential
+Transactions deployments (Elements/Liquid, Monero since 2018, Grin) all use
+Bulletproofs or a close relative for exactly this purpose.
+
+## Voting
+
+A secret-ballot election has a similar shape to a confidential transaction: you
+need to add up votes without any individual authority ever seeing an individual
+vote. Ronald Cramer, Rosario Gennaro, and Berry Schoenmakers's **multi-authority
+election scheme** (EUROCRYPT '97) is the canonical construction here, and it's
+built directly on Pedersen's original verifiable-secret-sharing protocol — the
+same 1991 paper the commitment scheme on this site comes from, used closer to its
+original context this time.
+
+Each voter commits to their vote (typically encoded as 0 or 1 per candidate); the
+homomorphic property lets election authorities sum every voter's commitment into
+one commitment to the *total* vote count per candidate, which is then jointly
+opened by the authorities — without any single authority, or anyone else, ever
+learning an individual ballot. This "homomorphic tallying" pattern, first laid out
+in that 1997 paper, is still the basic approach behind academic and
+real-world end-to-end-verifiable voting systems today.
+
+---
+
+**Sources:**
+[Confidential Transactions (Elements Project)](https://elementsproject.org/features/confidential-transactions);
+Shen Noether, ["Ring Confidential Transactions,"](https://eprint.iacr.org/2015/1098) IACR ePrint 2015/1098;
+Bünz, Bootle, Boneh, Poelstra, Wuille, Maxwell, ["Bulletproofs: Short Proofs for Confidential Transactions and More,"](https://eprint.iacr.org/2017/1066) IEEE S&P 2018, pp. 315–334;
+Cramer, Gennaro, Schoenmakers, "A Secure and Optimally Efficient Multi-Authority Election Scheme," EUROCRYPT '97.

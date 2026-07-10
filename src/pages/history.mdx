@@ -1,0 +1,105 @@
+---
+layout: ../layouts/Layout.astro
+title: History
+description: A timeline from zero-knowledge proofs (1985) through Pedersen's 1991 commitment scheme to Bulletproofs and zk-STARKs — each entry sourced to its original paper.
+---
+
+# History
+
+Pedersen commitments didn't appear in a vacuum, and they didn't stay confined to
+the paper that introduced them either. This is the surrounding timeline: the ideas
+that made a scheme like Pedersen's possible, and what got built on top of it
+afterward.
+
+### 1985 — Zero-knowledge proofs
+
+Shafi Goldwasser, Silvio Micali, and Charles Rackoff introduce the notion of a
+**zero-knowledge proof**: an interactive protocol where a prover convinces a
+verifier that a statement is true while conveying nothing beyond that one bit.
+*"The Knowledge Complexity of Interactive Proof-Systems"* (extended abstract),
+17th ACM Symposium on Theory of Computing (STOC '85), pp. 291–304. A full journal
+version followed in *SIAM Journal on Computing* 18(1), 1989, pp. 186–208. This is
+the conceptual root of the entire zero-knowledge line this site touches on.
+
+### 1986 — The Fiat–Shamir transform
+
+Amos Fiat and Adi Shamir publish *"How to Prove Yourself: Practical Solutions to
+Identification and Signature Problems,"* CRYPTO '86, pp. 186–194. It gives a
+general recipe — since known as the **Fiat–Shamir heuristic** — for turning an
+interactive proof into a non-interactive one by replacing the verifier's random
+challenge with the output of a hash function. Most of the non-interactive
+zero-knowledge systems built since, including modern zk-SNARKs, use some form of
+this transform.
+
+### 1991 — Schnorr identification and signatures
+
+Claus-Peter Schnorr publishes *"Efficient Signature Generation by Smart Cards,"*
+*Journal of Cryptology* 4(3), pp. 161–174. It describes an identification scheme
+and signature scheme based on the discrete logarithm problem in a prime-order
+subgroup — structurally the same setting Pedersen commitments live in, and the
+scheme most often paired with a Pedersen commitment when building a proof of
+knowledge of an opening (a "Schnorr proof over a commitment").
+
+### 1991 — Pedersen commitments
+
+Torben P. Pedersen publishes *"Non-Interactive and Information-Theoretic Secure
+Verifiable Secret Sharing,"* CRYPTO '91, LNCS vol. 576, pp. 129–140. The
+commitment construction covered on this site — see [Pedersen
+commitments](/pedersen-commitments) — appears inside that paper as a building
+block for a verifiable secret-sharing protocol, and later took on a life of its
+own.
+
+### 1997 — Voting built on Pedersen's construction
+
+Ronald Cramer, Rosario Gennaro, and Berry Schoenmakers publish *"A Secure and
+Optimally Efficient Multi-Authority Election Scheme,"* EUROCRYPT '97 — a
+secret-ballot voting protocol that uses Pedersen's verifiable secret sharing
+directly, with the homomorphic property doing the work of tallying encrypted votes
+without decrypting any individual ballot. See [Applications](/applications) for
+how this idea is still the basic pattern behind homomorphic-tally voting schemes.
+
+### 2015 — Confidential Transactions and RingCT
+
+Gregory Maxwell proposes **Confidential Transactions**, using Pedersen commitments
+to hide transaction amounts on a Bitcoin-style ledger while still letting anyone
+verify that inputs equal outputs, via the homomorphic property — documented at
+[elementsproject.org/features/confidential-transactions](https://elementsproject.org/features/confidential-transactions).
+The same year, Shen Noether of Monero Research Labs publishes *"Ring Confidential
+Transactions,"* combining Pedersen commitments with ring signatures to hide both
+amounts and senders (IACR ePrint 2015/1098). Both are covered in more depth on
+[Applications](/applications).
+
+### 2016 — Groth16: practical zk-SNARKs
+
+Jens Groth publishes *"On the Size of Pairing-Based Non-interactive Arguments,"*
+EUROCRYPT 2016 (IACR ePrint 2016/260). The resulting construction — a proof of
+just three group elements, checked with a single pairing equation — became the
+most widely deployed zk-SNARK in practice, including in Zcash's shielded
+transactions.
+
+### 2018 — Bulletproofs
+
+Benedikt Bünz, Jonathan Bootle, Dan Boneh, Andrew Poelstra, Pieter Wuille, and
+Gregory Maxwell publish *"Bulletproofs: Short Proofs for Confidential Transactions
+and More,"* IEEE Symposium on Security and Privacy 2018, pp. 315–334 (IACR ePrint
+2017/1066). Bulletproofs give short, trusted-setup-free **range proofs** — proofs
+that a committed value lies in some range — built directly on Pedersen
+commitments. This is the piece that made Confidential-Transactions-style privacy
+practical at scale; see [Applications](/applications).
+
+### 2018 — zk-STARKs
+
+Eli Ben-Sasson, Iddo Bentov, Yinon Horesh, and Michael Riabzev publish *"Scalable,
+Transparent, and Post-Quantum Secure Computational Integrity,"* IACR ePrint
+2018/046. zk-STARKs drop the discrete-log/pairing assumptions entirely in favor of
+hash-based proofs — no trusted setup, and believed post-quantum secure — trading
+that for larger proof sizes than SNARKs like Groth16.
+
+---
+
+This list stops at 2018 deliberately: past that point the field fragments into
+many parallel, still-evolving proof systems (PLONK, Halo2, and others), which is a
+better subject for its own page than a tail-end afterthought here.
+
+**Sources:** linked inline above; all citations are to the original papers or, for
+Confidential Transactions, the canonical implementation documentation.
