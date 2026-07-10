@@ -1,0 +1,66 @@
+<div class="demo-panel" id="hiding-demo">
+  <p class="demo-status" id="hiding-status">Deriving generators…</p>
+
+  <p class="demo-label">Row A — same message, m = 7, eight different random r</p>
+  <div class="swatch-grid" id="hiding-row-same"></div>
+
+  <p class="demo-label" style="margin-top: 1.4rem;">Row B — eight different messages (m = 0…7), fresh random r each</p>
+  <div class="swatch-grid" id="hiding-row-different"></div>
+
+  <div class="demo-divider">
+    <button id="hiding-regen-btn" type="button" disabled>Regenerate</button>
+    <p class="demo-hint" style="margin-top: 0.75rem;">
+      Each swatch's color comes directly from the low-order bits of a real commitment.
+      If you can't tell Row A from Row B by eye, that's the point: the distribution of
+      C doesn't depend on m at all.
+    </p>
+  </div>
+</div>
+
+<script>
+  import { commit, randomExponent, getGenerators } from '../lib/classic-pedersen.js';
+
+  const statusEl = document.getElementById('hiding-status')!;
+  const rowSameEl = document.getElementById('hiding-row-same')!;
+  const rowDiffEl = document.getElementById('hiding-row-different')!;
+  const regenBtn = document.getElementById('hiding-regen-btn') as HTMLButtonElement;
+
+  function colorFromCommitment(C: bigint): string {
+    const hex = C.toString(16).padStart(8, '0');
+    return '#' + hex.slice(-6);
+  }
+
+  async function makeSwatch(container: HTMLElement, m: bigint) {
+    const r = randomExponent();
+    const C = await commit(m, r);
+    const color = colorFromCommitment(C);
+    const wrapper = document.createElement('div');
+    const swatch = document.createElement('div');
+    swatch.className = 'swatch';
+    swatch.style.background = color;
+    swatch.title = color;
+    const label = document.createElement('div');
+    label.className = 'swatch-label';
+    label.textContent = color;
+    wrapper.appendChild(swatch);
+    wrapper.appendChild(label);
+    container.appendChild(wrapper);
+  }
+
+  async function render() {
+    regenBtn.disabled = true;
+    rowSameEl.innerHTML = '';
+    rowDiffEl.innerHTML = '';
+    const sameM = 7n;
+    await Promise.all(Array.from({ length: 8 }, () => makeSwatch(rowSameEl, sameM)));
+    await Promise.all(Array.from({ length: 8 }, (_, i) => makeSwatch(rowDiffEl, BigInt(i))));
+    regenBtn.disabled = false;
+  }
+
+  getGenerators().then(() => {
+    statusEl.textContent = 'Ready — classic scheme, 2048-bit safe-prime group.';
+    render();
+  });
+
+  regenBtn.addEventListener('click', render);
+</script>

@@ -152,3 +152,136 @@ th {
   background: var(--accent);
   color: var(--bg-elevated);
 }
+
+/* ---- Shared interactive-demo panels ---- */
+
+.demo-panel {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 0.6em;
+  padding: 1.5rem 1.5rem 1.75rem;
+  margin: 1.5rem 0 2.5rem;
+}
+.demo-status {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 1.1rem;
+}
+.demo-label {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.demo-row + .demo-row {
+  margin-top: 1rem;
+}
+.demo-row label {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.demo-input-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.demo-input-row input[type='number'],
+.demo-input-row input[type='text'] {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--border);
+  border-radius: 0.4em;
+  background: var(--bg);
+  color: var(--text);
+  width: 8rem;
+}
+.demo-panel button {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.45em 1.1em;
+  border: 1px solid var(--accent);
+  border-radius: 0.4em;
+  background: var(--accent);
+  color: var(--bg-elevated);
+  cursor: pointer;
+}
+.demo-panel button.secondary {
+  background: transparent;
+  color: var(--accent-text);
+}
+.demo-panel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.demo-panel button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.demo-commitment {
+  display: block;
+  word-break: break-all;
+  background: var(--code-bg);
+  padding: 0.7em 0.85em;
+  border-radius: 0.4em;
+  margin-bottom: 0.5rem;
+}
+.demo-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+.demo-divider {
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px dashed var(--border);
+}
+.demo-check {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.demo-check.ok { color: var(--ok); }
+.demo-check.bad { color: var(--bad); }
+.demo-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 0.4em;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+.demo-toggle button {
+  border: none;
+  border-radius: 0;
+  background: var(--bg);
+  color: var(--text-muted);
+  padding: 0.4em 0.9em;
+  font-weight: 600;
+}
+.demo-toggle button.active {
+  background: var(--accent);
+  color: var(--bg-elevated);
+}
+.swatch-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.swatch {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 0.4em;
+  border: 1px solid var(--border);
+}
+.swatch-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 0.25rem;
+}

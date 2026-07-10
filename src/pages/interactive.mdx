@@ -1,0 +1,62 @@
+---
+layout: ../layouts/Layout.astro
+title: Interactive demos
+description: Four working demos — a commitment calculator with a classic/EC toggle, a hiding visualizer, a homomorphic-addition demo, and a brute-forceable binding sandbox.
+---
+
+import CommitmentCalculator from '../components/CommitmentCalculator.astro';
+import HidingVisualizer from '../components/HidingVisualizer.astro';
+import HomomorphicDemo from '../components/HomomorphicDemo.astro';
+import BindingSandbox from '../components/BindingSandbox.astro';
+
+# Interactive demos
+
+Everything on this page computes real Pedersen commitments in your browser — the
+classic demos use the same 2048-bit safe-prime group as the [homepage](/), and the
+binding sandbox uses a tiny toy group specifically so you can brute-force it
+yourself. Nothing here is a mock; open the page source if you want to check.
+
+## Commitment calculator
+
+Commit to a message under either the classic multiplicative-group scheme or the
+modern elliptic-curve one (see [Pedersen commitments](/pedersen-commitments) for
+both formulas), then reveal and verify.
+
+<CommitmentCalculator />
+
+## Hiding, visualized
+
+The [hiding proof](/pedersen-commitments#why-hiding-is-information-theoretic) says
+`C`'s distribution doesn't depend on `m` at all. Here's what that looks like in
+practice: eight commitments to the *same* message next to eight commitments to
+*different* messages. Each swatch's color is taken directly from the low-order
+bits of the real commitment value — there is no separate "visualization" hash, just
+a slice of the actual number.
+
+<HidingVisualizer />
+
+## Homomorphic addition
+
+Commit to two messages separately, multiply the commitments together, then reveal
+the sum and check it against the product — without ever revealing either input on
+its own.
+
+<HomomorphicDemo />
+
+## Binding sandbox
+
+The [binding proof](/pedersen-commitments#why-binding-is-only-computational) shows
+that finding two different openings of the same commitment is exactly as hard as
+computing the discrete log of `h` base `g`. This sandbox uses a toy group small
+enough (p = 23, q = 11) to brute-force in your browser, so you can watch that
+reduction happen on real numbers instead of taking it on faith.
+
+<BindingSandbox />
+
+---
+
+**Sources:** all demos on this page implement the formulas derived on the
+[Pedersen commitments](/pedersen-commitments) page; the classic group is the RFC
+3526 2048-bit MODP Group 14 safe prime, and the elliptic-curve demo uses secp256k1
+via the audited [`@noble/curves`](https://github.com/paulmillr/noble-curves)
+library.

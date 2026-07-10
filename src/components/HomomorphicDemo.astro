@@ -1,0 +1,102 @@
+<div class="demo-panel" id="homo-demo">
+  <p class="demo-status" id="homo-status">Deriving generators…</p>
+
+  <div class="demo-row">
+    <label for="homo-m1">m₁</label>
+    <div class="demo-input-row">
+      <input id="homo-m1" type="number" value="12" min="0" step="1" />
+      <label for="homo-m2" style="margin: 0;">m₂</label>
+      <input id="homo-m2" type="number" value="30" min="0" step="1" />
+      <button id="homo-commit-btn" type="button" disabled>Commit both separately</button>
+    </div>
+  </div>
+
+  <div class="demo-divider" id="homo-committed" hidden>
+    <p class="demo-label">C₁ = Commit(m₁, r₁)</p>
+    <code class="demo-commitment" id="homo-c1"></code>
+    <p class="demo-label">C₂ = Commit(m₂, r₂)</p>
+    <code class="demo-commitment" id="homo-c2"></code>
+    <p class="demo-hint">Neither m₁ nor m₂ has been revealed yet.</p>
+    <button id="homo-combine-btn" type="button">Combine (C₁ · C₂ mod p)</button>
+  </div>
+
+  <div class="demo-divider" id="homo-combined" hidden>
+    <p class="demo-label">C₁ · C₂ mod p</p>
+    <code class="demo-commitment" id="homo-csum"></code>
+    <button id="homo-reveal-btn" type="button">Reveal m₁ + m₂ and check</button>
+  </div>
+
+  <div class="demo-divider" id="homo-reveal" hidden>
+    <p>
+      m₁ + m₂ = <code id="homo-sum"></code>, r₁ + r₂ mod q = <code id="homo-rsum"></code>
+    </p>
+    <p class="demo-check" id="homo-check"></p>
+  </div>
+</div>
+
+<script>
+  import { commit, randomExponent, getGenerators, P, Q, toShortHex } from '../lib/classic-pedersen.js';
+
+  const statusEl = document.getElementById('homo-status')!;
+  const m1Input = document.getElementById('homo-m1') as HTMLInputElement;
+  const m2Input = document.getElementById('homo-m2') as HTMLInputElement;
+  const commitBtn = document.getElementById('homo-commit-btn') as HTMLButtonElement;
+  const committedEl = document.getElementById('homo-committed')!;
+  const c1El = document.getElementById('homo-c1')!;
+  const c2El = document.getElementById('homo-c2')!;
+  const combineBtn = document.getElementById('homo-combine-btn')!;
+  const combinedEl = document.getElementById('homo-combined')!;
+  const csumEl = document.getElementById('homo-csum')!;
+  const revealBtn = document.getElementById('homo-reveal-btn')!;
+  const revealEl = document.getElementById('homo-reveal')!;
+  const sumEl = document.getElementById('homo-sum')!;
+  const rsumEl = document.getElementById('homo-rsum')!;
+  const checkEl = document.getElementById('homo-check')!;
+
+  let state: { m1: bigint; r1: bigint; C1: bigint; m2: bigint; r2: bigint; C2: bigint; Csum: bigint } | null = null;
+
+  getGenerators().then(() => {
+    statusEl.textContent = 'Ready — classic scheme, 2048-bit safe-prime group.';
+    commitBtn.disabled = false;
+  });
+
+  commitBtn.addEventListener('click', async () => {
+    commitBtn.disabled = true;
+    const m1 = BigInt(Math.max(0, Math.trunc(Number(m1Input.value) || 0)));
+    const m2 = BigInt(Math.max(0, Math.trunc(Number(m2Input.value) || 0)));
+    const r1 = randomExponent();
+    const r2 = randomExponent();
+    const C1 = await commit(m1, r1);
+    const C2 = await commit(m2, r2);
+    state = { m1, r1, C1, m2, r2, C2, Csum: 0n };
+    c1El.textContent = toShortHex(C1);
+    c2El.textContent = toShortHex(C2);
+    committedEl.hidden = false;
+    combinedEl.hidden = true;
+    revealEl.hidden = true;
+    commitBtn.disabled = false;
+  });
+
+  combineBtn.addEventListener('click', () => {
+    if (!state) return;
+    state.Csum = (state.C1 * state.C2) % P;
+    csumEl.textContent = toShortHex(state.Csum);
+    combinedEl.hidden = false;
+    revealEl.hidden = true;
+  });
+
+  revealBtn.addEventListener('click', async () => {
+    if (!state) return;
+    const sum = state.m1 + state.m2;
+    const rsum = (state.r1 + state.r2) % Q;
+    const direct = await commit(sum, rsum);
+    const ok = direct === state.Csum;
+    sumEl.textContent = sum.toString();
+    rsumEl.textContent = toShortHex(rsum, 20);
+    checkEl.textContent = ok
+      ? '✓ Commit(m₁+m₂, r₁+r₂) recomputed independently — matches C₁·C₂ mod p'
+      : '✗ mismatch (should never happen)';
+    checkEl.className = `demo-check ${ok ? 'ok' : 'bad'}`;
+    revealEl.hidden = false;
+  });
+</script>

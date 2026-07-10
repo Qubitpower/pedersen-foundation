@@ -1,0 +1,132 @@
+<div class="demo-panel" id="calc-demo">
+  <p class="demo-status" id="calc-status">Deriving generators…</p>
+
+  <div class="demo-toggle" id="calc-toggle" role="tablist" aria-label="Group">
+    <button type="button" data-mode="classic" class="active">Classic (mod p)</button>
+    <button type="button" data-mode="ec">Elliptic curve (secp256k1)</button>
+  </div>
+
+  <div class="demo-row" style="margin-top: 1rem;">
+    <label for="calc-m">Your secret message, m</label>
+    <div class="demo-input-row">
+      <input id="calc-m" type="number" value="17" min="0" step="1" />
+      <button id="calc-commit-btn" type="button" disabled>Commit</button>
+    </div>
+  </div>
+
+  <div class="demo-divider" id="calc-output" hidden>
+    <p class="demo-label" id="calc-formula">Commitment C = g^m · h^r mod p</p>
+    <code class="demo-commitment" id="calc-commitment-value"></code>
+    <p class="demo-hint" id="calc-size-hint"></p>
+    <button id="calc-reveal-btn" type="button">Reveal</button>
+  </div>
+
+  <div class="demo-divider" id="calc-reveal" hidden>
+    <p>Opened with <code>m = <span id="calc-reveal-m"></span></code>, <code>r = <span id="calc-reveal-r"></span></code></p>
+    <p class="demo-check" id="calc-reveal-check"></p>
+  </div>
+</div>
+
+<script>
+  import * as classic from '../lib/classic-pedersen.js';
+  import * as ec from '../lib/ec-pedersen.js';
+
+  interface Backend {
+    formula: string;
+    sizeHint: string;
+    ready: () => Promise<void>;
+    randomExponent: () => bigint;
+    commit: (m: bigint, r: bigint) => Promise<any>;
+    verify: (m: bigint, r: bigint, C: any) => Promise<boolean>;
+    format: (C: any) => string;
+    formatR: (r: bigint) => string;
+  }
+
+  const backends: Record<'classic' | 'ec', Backend> = {
+    classic: {
+      formula: 'Commitment C = g^m · h^r mod p',
+      sizeHint: '2048-bit safe-prime group (RFC 3526 Group 14) — commitment is ~2048 bits.',
+      ready: () => classic.getGenerators().then(() => {}),
+      randomExponent: () => classic.randomExponent(),
+      commit: async (m, r) => classic.commit(m, r),
+      verify: async (m, r, C) => classic.verify(m, r, C),
+      format: (C) => classic.toShortHex(C),
+      formatR: (r) => classic.toShortHex(r, 20),
+    },
+    ec: {
+      formula: 'Commitment C = m·G + r·H  (curve point)',
+      sizeHint: 'secp256k1 — commitment is a 33-byte compressed point, shown here in full.',
+      ready: () => Promise.resolve(),
+      randomExponent: () => ec.randomExponent(),
+      commit: async (m, r) => ec.commit(m, r),
+      verify: async (m, r, C) => ec.verify(m, r, C),
+      format: (C) => ec.toHex(C),
+      formatR: (r) => '0x' + r.toString(16),
+    },
+  };
+
+  type Mode = keyof typeof backends;
+  let mode: Mode = 'classic';
+  let state: { m: bigint; r: bigint; C: any; backend: Backend } | null = null;
+
+  const statusEl = document.getElementById('calc-status')!;
+  const toggleEl = document.getElementById('calc-toggle')!;
+  const mInput = document.getElementById('calc-m') as HTMLInputElement;
+  const commitBtn = document.getElementById('calc-commit-btn') as HTMLButtonElement;
+  const outputEl = document.getElementById('calc-output')!;
+  const formulaEl = document.getElementById('calc-formula')!;
+  const sizeHintEl = document.getElementById('calc-size-hint')!;
+  const commitmentValueEl = document.getElementById('calc-commitment-value')!;
+  const revealBtn = document.getElementById('calc-reveal-btn')!;
+  const revealEl = document.getElementById('calc-reveal')!;
+  const revealMEl = document.getElementById('calc-reveal-m')!;
+  const revealREl = document.getElementById('calc-reveal-r')!;
+  const revealCheckEl = document.getElementById('calc-reveal-check')!;
+
+  function setMode(next: Mode) {
+    mode = next;
+    for (const btn of toggleEl.querySelectorAll('button')) {
+      btn.classList.toggle('active', (btn as HTMLElement).dataset.mode === next);
+    }
+    formulaEl.textContent = backends[next].formula;
+    sizeHintEl.textContent = backends[next].sizeHint;
+    outputEl.hidden = true;
+    revealEl.hidden = true;
+  }
+
+  toggleEl.addEventListener('click', (e) => {
+    const target = (e.target as HTMLElement).closest('button');
+    if (!target) return;
+    setMode(target.dataset.mode as Mode);
+  });
+
+  Promise.all([backends.classic.ready(), backends.ec.ready()]).then(() => {
+    statusEl.textContent = 'Ready.';
+    commitBtn.disabled = false;
+  });
+
+  commitBtn.addEventListener('click', async () => {
+    commitBtn.disabled = true;
+    const backend = backends[mode];
+    const m = BigInt(Math.max(0, Math.trunc(Number(mInput.value) || 0)));
+    const r = backend.randomExponent();
+    const C = await backend.commit(m, r);
+    state = { m, r, C, backend };
+    commitmentValueEl.textContent = backend.format(C);
+    outputEl.hidden = false;
+    revealEl.hidden = true;
+    commitBtn.disabled = false;
+  });
+
+  revealBtn.addEventListener('click', async () => {
+    if (!state) return;
+    const ok = await state.backend.verify(state.m, state.r, state.C);
+    revealMEl.textContent = state.m.toString();
+    revealREl.textContent = state.backend.formatR(state.r);
+    revealCheckEl.textContent = ok ? '✓ recomputed — matches C' : '✗ mismatch (should never happen)';
+    revealCheckEl.className = `demo-check ${ok ? 'ok' : 'bad'}`;
+    revealEl.hidden = false;
+  });
+
+  setMode('classic');
+</script>

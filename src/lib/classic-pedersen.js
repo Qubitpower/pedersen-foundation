@@ -19,10 +19,15 @@ const P_HEX = `
   15728E5A 8AACAA68 FFFFFFFF FFFFFFFF
 `.replace(/\s+/g, '');
 
-export const P = BigInt('0x' + P_HEX);
-export const Q = (P - 1n) / 2n; // prime order of the quadratic-residue subgroup
+const P_REAL = BigInt('0x' + P_HEX);
 
-/** Square-and-multiply modular exponentiation. */
+/**
+ * Square-and-multiply modular exponentiation.
+ * @param {bigint} base
+ * @param {bigint} exp
+ * @param {bigint} mod
+ * @returns {bigint}
+ */
 export function modPow(base, exp, mod) {
   base %= mod;
   if (base < 0n) base += mod;
@@ -48,7 +53,9 @@ async function sha256(bytes) {
 
 /**
  * Nothing-up-my-sleeve field element: expand a domain-separated tag with
- * counter-mode SHA-256 until we have enough bytes to cover P, then reduce.
+ * counter-mode SHA-256 until we have enough bytes to cover the modulus, then
+ * reduce. byteLen defaults to 256 (covers our 2048-bit real group); it's
+ * harmless overkill for the small toy group, just a few wasted hash calls.
  */
 async function hashToFieldElement(tag, mod, byteLen = 256) {
   const blocks = [];
@@ -76,43 +83,91 @@ async function hashToFieldElement(tag, mod, byteLen = 256) {
  * Derive a generator of the order-q subgroup by hashing a public tag to a
  * field element and squaring it (squaring any element of Z_p* lands it in
  * the unique subgroup of index 2, which has order q since p = 2q + 1).
+ * Retries with a different attempt suffix on the negligible chance the
+ * squared value is the identity (only realistically reachable in the toy
+ * group, where the field is tiny).
  */
-async function deriveGenerator(tag) {
-  const x = await hashToFieldElement(tag, P);
-  return modPow(x, 2n, P);
-}
-
-let generatorsPromise = null;
-
-/** g and h: independent generators with no known discrete-log relation. */
-export function getGenerators() {
-  if (!generatorsPromise) {
-    generatorsPromise = Promise.all([
-      deriveGenerator('pedersen.foundation classic-demo generator g v1'),
-      deriveGenerator('pedersen.foundation classic-demo generator h v1'),
-    ]).then(([g, h]) => ({ g, h }));
+async function deriveGenerator(tag, p) {
+  let attempt = 0;
+  while (true) {
+    const x = await hashToFieldElement(`${tag}#attempt${attempt}`, p);
+    const g = modPow(x, 2n, p);
+    if (g !== 1n) return g;
+    attempt++;
   }
-  return generatorsPromise;
 }
 
-/** Uniform random exponent in [0, Q). */
-export function randomExponent() {
-  const bytes = new Uint8Array(256);
-  crypto.getRandomValues(bytes);
-  return bytesToBigInt(bytes) % Q;
+/** Build an independent classic Pedersen group over Z_p* for a safe prime p. */
+export function createGroup(p, label) {
+  const Q = (p - 1n) / 2n;
+  let generatorsPromise = null;
+
+  function getGenerators() {
+    if (!generatorsPromise) {
+      generatorsPromise = Promise.all([
+        deriveGenerator(`${label} generator g v1`, p),
+        deriveGenerator(`${label} generator h v1`, p),
+      ]).then(([g, h]) => ({ g, h }));
+    }
+    return generatorsPromise;
+  }
+
+  function randomExponent() {
+    const bytes = new Uint8Array(256);
+    crypto.getRandomValues(bytes);
+    return bytesToBigInt(bytes) % Q;
+  }
+
+  async function commit(m, r) {
+    const { g, h } = await getGenerators();
+    return (modPow(g, m, p) * modPow(h, r, p)) % p;
+  }
+
+  async function verify(m, r, C) {
+    const { g, h } = await getGenerators();
+    return (modPow(g, m, p) * modPow(h, r, p)) % p === C;
+  }
+
+  return { P: p, Q, label, getGenerators, randomExponent, commit, verify };
 }
 
-/** Commit(m, r) = g^m * h^r mod p */
-export async function commit(m, r) {
-  const { g, h } = await getGenerators();
-  return (modPow(g, m, P) * modPow(h, r, P)) % P;
-}
+/** The real, RFC-3526-backed group used by the site's main demos. */
+export const REAL = createGroup(P_REAL, 'pedersen.foundation classic-demo');
 
-/** Recompute g^m * h^r mod p and compare against a previously issued commitment. */
-export async function verify(m, r, C) {
-  const { g, h } = await getGenerators();
-  const recomputed = (modPow(g, m, P) * modPow(h, r, P)) % P;
-  return recomputed === C;
+/**
+ * A deliberately tiny group (p = 23, q = 11) for the binding sandbox: small
+ * enough to brute-force every (m, r) pair in the browser instantly, which is
+ * the whole point — it makes concrete that binding is "just" a search
+ * problem, one that happens to be astronomically large at real parameter
+ * sizes. 23 is prime and (23-1)/2 = 11 is also prime, so it has the same
+ * safe-prime structure as the real group, just scaled down.
+ */
+export const TOY = createGroup(23n, 'pedersen.foundation toy-demo');
+
+// Backward-compatible flat exports (used by the homepage demo) bound to REAL.
+export const P = REAL.P;
+export const Q = REAL.Q;
+export const getGenerators = REAL.getGenerators;
+export const randomExponent = REAL.randomExponent;
+export const commit = REAL.commit;
+export const verify = REAL.verify;
+
+/**
+ * Modular inverse via the extended Euclidean algorithm.
+ * @param {bigint} a
+ * @param {bigint} m
+ * @returns {bigint}
+ */
+export function modInverse(a, m) {
+  a = ((a % m) + m) % m;
+  let [oldR, r] = [a, m];
+  let [oldS, s] = [1n, 0n];
+  while (r !== 0n) {
+    const q = oldR / r;
+    [oldR, r] = [r, oldR - q * r];
+    [oldS, s] = [s, oldS - q * s];
+  }
+  return ((oldS % m) + m) % m;
 }
 
 export function toShortHex(n, chars = 48) {

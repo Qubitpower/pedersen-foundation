@@ -9,14 +9,14 @@
     </div>
   </div>
 
-  <div class="demo-output" id="demo-output" hidden>
+  <div class="demo-divider" id="demo-output" hidden>
     <p class="demo-label">Commitment C = g^m · h^r mod p</p>
     <code class="demo-commitment" id="demo-commitment-value"></code>
     <p class="demo-hint">m and r are not shown — this is all the verifier sees.</p>
     <button id="demo-reveal-btn" type="button">Reveal</button>
   </div>
 
-  <div class="demo-reveal" id="demo-reveal" hidden>
+  <div class="demo-divider" id="demo-reveal" hidden>
     <p>Opened with <code>m = <span id="reveal-m"></span></code>, <code>r = <span id="reveal-r"></span></code></p>
     <p class="demo-check" id="reveal-check"></p>
   </div>
@@ -67,93 +67,3 @@
     revealEl.hidden = false;
   });
 </script>
-
-<style>
-  .demo-panel {
-    border: 1px solid var(--border);
-    background: var(--bg-elevated);
-    border-radius: 0.6em;
-    padding: 1.5rem 1.5rem 1.75rem;
-    margin: 1.5rem 0 2.5rem;
-  }
-  .demo-status {
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin: 0 0 1.1rem;
-  }
-  .demo-row label {
-    display: block;
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 0.4rem;
-  }
-  .demo-input-row {
-    display: flex;
-    gap: 0.6rem;
-  }
-  .demo-input-row input {
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    padding: 0.45em 0.6em;
-    border: 1px solid var(--border);
-    border-radius: 0.4em;
-    background: var(--bg);
-    color: var(--text);
-    width: 8rem;
-  }
-  button {
-    font-family: var(--font-sans);
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 0.45em 1.1em;
-    border: 1px solid var(--accent);
-    border-radius: 0.4em;
-    background: var(--accent);
-    color: var(--bg-elevated);
-    cursor: pointer;
-  }
-  button:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
-  button:hover:not(:disabled) {
-    filter: brightness(1.08);
-  }
-  .demo-output {
-    margin-top: 1.4rem;
-    padding-top: 1.2rem;
-    border-top: 1px dashed var(--border);
-  }
-  .demo-label {
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin: 0 0 0.5rem;
-  }
-  .demo-commitment {
-    display: block;
-    word-break: break-all;
-    background: var(--code-bg);
-    padding: 0.7em 0.85em;
-    border-radius: 0.4em;
-    margin-bottom: 0.5rem;
-  }
-  .demo-hint {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    margin-bottom: 1rem;
-  }
-  .demo-reveal {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px dashed var(--border);
-  }
-  .demo-check {
-    font-family: var(--font-mono);
-    font-weight: 600;
-  }
-  .demo-check.ok { color: var(--ok); }
-  .demo-check.bad { color: var(--bad); }
-</style>

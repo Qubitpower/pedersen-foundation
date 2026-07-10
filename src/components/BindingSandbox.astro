@@ -1,0 +1,110 @@
+<div class="demo-panel" id="binding-demo">
+  <p class="demo-status" id="binding-status">Deriving toy generators…</p>
+
+  <p class="demo-hint">
+    This uses a deliberately tiny group — p = 23, q = 11 — so a full brute-force
+    search is instant. The real site uses a 2048-bit group where the identical
+    search is intractable; only the size changes, not the math.
+  </p>
+
+  <div class="demo-row">
+    <label for="binding-m">Message to commit, m (0–10)</label>
+    <div class="demo-input-row">
+      <input id="binding-m" type="number" value="3" min="0" max="10" step="1" />
+      <button id="binding-commit-btn" type="button" disabled>Commit (toy)</button>
+    </div>
+  </div>
+
+  <div class="demo-divider" id="binding-committed" hidden>
+    <p class="demo-hint">
+      g = <code id="binding-g"></code>, h = <code id="binding-h"></code>,
+      p = <code>23</code>, q = <code>11</code>
+    </p>
+    <p class="demo-label">C = g^m · h^r mod 23</p>
+    <code class="demo-commitment" id="binding-c"></code>
+    <button id="binding-search-btn" type="button">Brute-force search for a second opening</button>
+  </div>
+
+  <div class="demo-divider" id="binding-result" hidden></div>
+</div>
+
+<script>
+  import { TOY, modPow, modInverse } from '../lib/classic-pedersen.js';
+
+  const statusEl = document.getElementById('binding-status')!;
+  const mInput = document.getElementById('binding-m') as HTMLInputElement;
+  const commitBtn = document.getElementById('binding-commit-btn') as HTMLButtonElement;
+  const committedEl = document.getElementById('binding-committed')!;
+  const gEl = document.getElementById('binding-g')!;
+  const hEl = document.getElementById('binding-h')!;
+  const cEl = document.getElementById('binding-c')!;
+  const searchBtn = document.getElementById('binding-search-btn')!;
+  const resultEl = document.getElementById('binding-result')!;
+
+  let g = 0n;
+  let h = 0n;
+  let state: { m0: bigint; r0: bigint; C0: bigint } | null = null;
+
+  TOY.getGenerators().then((gen: { g: bigint; h: bigint }) => {
+    g = gen.g;
+    h = gen.h;
+    gEl.textContent = g.toString();
+    hEl.textContent = h.toString();
+    statusEl.textContent = 'Ready.';
+    commitBtn.disabled = false;
+  });
+
+  function toyCommit(m: bigint, r: bigint) {
+    return (modPow(g, m, TOY.P) * modPow(h, r, TOY.P)) % TOY.P;
+  }
+
+  commitBtn.addEventListener('click', () => {
+    const m0 = ((BigInt(Math.trunc(Number(mInput.value) || 0)) % TOY.Q) + TOY.Q) % TOY.Q;
+    const r0 = TOY.randomExponent();
+    const C0 = toyCommit(m0, r0);
+    state = { m0, r0, C0 };
+    cEl.textContent = C0.toString();
+    committedEl.hidden = false;
+    resultEl.hidden = true;
+    resultEl.innerHTML = '';
+  });
+
+  searchBtn.addEventListener('click', () => {
+    if (!state) return;
+    const { m0, r0, C0 } = state;
+    let found: { m: bigint; r: bigint } | null = null;
+    for (let m = 0n; m < TOY.Q && !found; m++) {
+      for (let r = 0n; r < TOY.Q; r++) {
+        if (m === m0 && r === r0) continue;
+        if (toyCommit(m, r) === C0) {
+          found = { m, r };
+          break;
+        }
+      }
+    }
+
+    resultEl.hidden = false;
+    if (!found) {
+      resultEl.innerHTML = `<p class="demo-check bad">✗ no second opening found (this shouldn't happen — every commitment in this group has exactly q openings)</p>`;
+      return;
+    }
+
+    const num = ((m0 - found.m) % TOY.Q + TOY.Q) % TOY.Q;
+    const den = ((found.r - r0) % TOY.Q + TOY.Q) % TOY.Q;
+    const x = (num * modInverse(den, TOY.Q)) % TOY.Q;
+    const checkOk = modPow(g, x, TOY.P) === h;
+
+    resultEl.innerHTML = `
+      <p>Found a second opening: <code>m' = ${found.m}</code>, <code>r' = ${found.r}</code> — also opens the same C = ${C0}.</p>
+      <p>That means g^${m0}·h^${r0} ≡ g^${found.m}·h^${found.r} (mod 23), so:</p>
+      <p><code>x = log_g(h) = (${m0} − ${found.m}) · (${found.r} − ${r0})⁻¹ mod 11 = ${x}</code></p>
+      <p class="demo-check ${checkOk ? 'ok' : 'bad'}">${checkOk ? '✓' : '✗'} check: g^${x} mod 23 = ${modPow(g, x, TOY.P)} ${checkOk ? '= h, exactly as claimed' : '≠ h'}</p>
+      <p class="demo-hint" style="margin-top: 0.75rem;">
+        Finding this collision handed us log_g(h) directly — exactly the reduction from
+        the <a href="/pedersen-commitments#why-binding-is-only-computational">binding proof</a>.
+        At toy size that took at most 121 tries. At q ≈ 2²⁰⁴⁷, the same search is not
+        "hard," it's longer than the age of the universe at any conceivable computing speed.
+      </p>
+    `;
+  });
+</script>
