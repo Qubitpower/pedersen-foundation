@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pedersen-foundation",
+  "compatibility_date": "2026-07-11",
+  "assets": {
+    "directory": "./dist"
+  },
+  "routes": [
+    { "pattern": "pedersen.foundation", "custom_domain": true },
+    { "pattern": "www.pedersen.foundation", "custom_domain": true }
+  ]
+}
