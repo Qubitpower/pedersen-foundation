@@ -42,8 +42,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     </main>
     <footer class="site-footer">
       <div class="site-footer-inner">
-        <span>Pedersen Commitments (Torben Pedersen, CRYPTO ’91) — text CC-BY, code MIT.</span>
-        <a href="https://github.com/Qubitpower/pedersen-foundation">Source on GitHub</a>
+        <div class="site-footer-row">
+          <span>Pedersen Commitments (Torben Pedersen, CRYPTO ’91) — text CC-BY, code MIT.</span>
+          <a href="https://github.com/Qubitpower/pedersen-foundation">Source on GitHub</a>
+        </div>
+        <div class="site-footer-row site-footer-network">
+          <span>Part of a small network of reference sites on cryptographic primitives:</span>
+          <a href="https://garbled.foundation">Garbled Circuits</a>
+        </div>
       </div>
     </footer>
   </body>
@@ -63,16 +69,24 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     border-top: 1px solid var(--border);
   }
   .site-footer-inner {
-    max-width: 62rem;
+    max-width: 78rem;
     margin: 0 auto;
     padding: 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .site-footer-row {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    font-family: var(--font-sans);
-    font-size: 0.8rem;
-    color: var(--text-muted);
+  }
+  .site-footer-network {
+    gap: 0.5rem;
   }
   .site-footer-inner a {
     color: var(--text-muted);
