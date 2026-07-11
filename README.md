@@ -1,12 +1,13 @@
-# Pedersen Foundation
+# Pedersen Commitments
 
 Source for [pedersen.foundation](https://pedersen.foundation) — a plain-spoken,
-working explanation of Pedersen commitments and the surrounding zero-knowledge
-context, aimed at engineers rather than cryptographers.
+working explanation of Pedersen commitments (Torben Pedersen, CRYPTO '91) and
+the surrounding zero-knowledge context, aimed at engineers rather than
+cryptographers.
 
 Every historical claim is sourced (see `/history` and `/further-reading`), and
 every interactive demo computes real values client-side — nothing is mocked. See
-`/about` for the full mission statement.
+`/about` for what this site is and how to contribute.
 
 ## Stack
 

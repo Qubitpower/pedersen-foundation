@@ -10,13 +10,14 @@ import CommitRevealDemo from '../components/CommitRevealDemo.astro';
 
 A **commitment scheme** lets you lock in a value now and reveal it later, without
 being able to change your mind and without the other side learning anything early —
-like sealing a number in an envelope. A **Pedersen commitment** is a specific,
-widely used way to build that envelope out of a bit of group theory: it hides the
-value unconditionally, its binding property reduces to the hardness of the discrete
-logarithm problem, and — unlike a plain hash — it lets you add committed values
-together without ever opening them. Try it below, then read [what a commitment
-scheme actually needs to guarantee](/what-is-a-commitment-scheme) or jump straight
-to [the construction](/pedersen-commitments).
+like sealing a number in an envelope. A **Pedersen commitment** — introduced by
+Torben Pedersen at CRYPTO ’91 — is a specific, widely used way to build that
+envelope out of a bit of group theory: it hides the value unconditionally, its
+binding property reduces to the hardness of the discrete logarithm problem, and —
+unlike a plain hash — it lets you add committed values together without ever
+opening them. Try it below, then read [what a commitment scheme actually needs to
+guarantee](/what-is-a-commitment-scheme) or jump straight to [the
+construction](/pedersen-commitments).
 
 <CommitRevealDemo />
 

@@ -17,14 +17,14 @@ Shafi Goldwasser, Silvio Micali, and Charles Rackoff introduce the notion of a
 **zero-knowledge proof**: an interactive protocol where a prover convinces a
 verifier that a statement is true while conveying nothing beyond that one bit.
 *"The Knowledge Complexity of Interactive Proof-Systems"* (extended abstract),
-17th ACM Symposium on Theory of Computing (STOC '85), pp. 291–304. A full journal
+17th ACM Symposium on Theory of Computing (STOC ’85), pp. 291–304. A full journal
 version followed in *SIAM Journal on Computing* 18(1), 1989, pp. 186–208. This is
 the conceptual root of the entire zero-knowledge line this site touches on.
 
 ### 1986 — The Fiat–Shamir transform
 
 Amos Fiat and Adi Shamir publish *"How to Prove Yourself: Practical Solutions to
-Identification and Signature Problems,"* CRYPTO '86, pp. 186–194. It gives a
+Identification and Signature Problems,"* CRYPTO ’86, pp. 186–194. It gives a
 general recipe — since known as the **Fiat–Shamir heuristic** — for turning an
 interactive proof into a non-interactive one by replacing the verifier's random
 challenge with the output of a hash function. Most of the non-interactive
@@ -43,7 +43,7 @@ knowledge of an opening (a "Schnorr proof over a commitment").
 ### 1991 — Pedersen commitments
 
 Torben P. Pedersen publishes *"Non-Interactive and Information-Theoretic Secure
-Verifiable Secret Sharing,"* CRYPTO '91, LNCS vol. 576, pp. 129–140. The
+Verifiable Secret Sharing,"* CRYPTO ’91, LNCS vol. 576, pp. 129–140. The
 commitment construction covered on this site — see [Pedersen
 commitments](/pedersen-commitments) — appears inside that paper as a building
 block for a verifiable secret-sharing protocol, and later took on a life of its
@@ -52,7 +52,7 @@ own.
 ### 1997 — Voting built on Pedersen's construction
 
 Ronald Cramer, Rosario Gennaro, and Berry Schoenmakers publish *"A Secure and
-Optimally Efficient Multi-Authority Election Scheme,"* EUROCRYPT '97 — a
+Optimally Efficient Multi-Authority Election Scheme,"* EUROCRYPT ’97 — a
 secret-ballot voting protocol that uses Pedersen's verifiable secret sharing
 directly, with the homomorphic property doing the work of tallying encrypted votes
 without decrypting any individual ballot. See [Applications](/applications) for
